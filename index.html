@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>US Air Quality Index by Urban Area; The Pandemic's Impact on Air Quality in US Cities</title>
+    <script src="d3.js"></script>
+    <script src="topojson.js"></script>
+    <style>
+		.caption
+        {
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        .backgroundCaption
+        {
+            font-size: 12pt;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        .infobox
+        {
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        .button_month
+        {
+            width: 8.33%;
+            height: 25px;
+            font-size: 14px;
+            box-shadow: 0 3px #999;
+            cursor: pointer;
+        }
+        .button_month:active {
+            box-shadow: 0 5px #666;
+            transform: translateY(4px);
+        }
+        .button_color
+        {
+            width: 250px;
+            height: 25px;
+            font-size: 14px;
+            box-shadow: 0 3px #999;
+            cursor: pointer;
+        }
+        .button_color:active {
+            box-shadow: 0 5px #666;
+            transform: translateY(4px);
+        }
+        .axes
+        {
+            font-size: 18px;
+        }
+        .legendtext
+        {
+            font-size: 20px;
+            cursor: pointer;
+        }
+        .axis-grid line
+        {
+            stroke: #def;
+        }
+        #selectable2019
+        {
+            float: left;
+        }
+        #selectable2020
+        {
+            padding-left: 50%;
+        }
+        #tooltip
+        {
+            opacity: 0;
+            background-color: black;
+            color: #fff;
+            position: absolute;
+            width: 120px;
+            text-align: center;
+            padding: 5px 0;
+            border-radius: 6px;
+        }
+        #rightTooltip
+        {
+            opacity: 0;
+            background-color: black;
+            color: #fff;
+            position: absolute;
+            width: 120px;
+            text-align: center;
+            padding: 5px 0;
+            border-radius: 6px;
+        }
+        .tooltipData
+        {
+            font-size: medium;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        path.path_geo:hover
+        {
+            stroke: black;
+            stroke-width: 3px;
+            cursor: pointer;
+        }
+        path.path_geo:active {
+            transform: translateY(4px);
+        }
+        .svgMap
+        {
+            width: 100%;
+            height: 100%;
+            background: #fcfcfc;
+            fill: none;
+            display: block;
+        }
+        path.path_geo
+        {
+            stroke-width: .5px;
+            stroke: black;
+        }
+        path.path_geo_state
+        {
+            stroke-width: .5px;
+            stroke: black;
+            fill: none;
+            opacity: .6;
+        }
+    </style>
+</head>
+<body>
+<h1 class="caption">US Air Quality Index by Urban Area (CBSA); The Pandemic's Impact on Air Quality in US Cities</h1>
+<p class="caption">In <b>March 2020</b>, the president declares a nationwide emergency and the country begins to shut
+    down to prevent the spread of COVID-19. Air Quality Index levels across the country are down as less people are
+    traveling.</p>
+<p class="caption">In <b>December 2020</b>, the FDA issued an Emergency Use Authorization for the first COVID-19
+    vaccine. After the one year anniversary of the breakout, states have rolled out re-opening plans and people are
+    beginning to travel again. As a result, Air Quality Index levels are higher.</p>
+<div class="infobox">
+    <p class="dataMonth">*** Select a month name to filter the data. *** Current Month: January</p>
+</div>
+
+<div id="buttons"></div><br><div id="options"></div>
+
+<div id="selectable2019" class = "caption">
+    <h2>US AVG. AQI for January 2019</h2></div>
+<div id="selectable2020" class = "caption">
+    <h2>US AVG. AQI for January 2020</h2>
+</div>
+<svg id="selectableAQIMap" class="svgMap" viewBox="0 0 1500 475"></svg>
+
+<div id="scatterhead" class = "caption">
+</div>
+<svg id="scatterplot" viewBox="0 0 1500 500"></svg>
+<br><br><br>
+<div class="backgroundCaption">
+    <p><b>About the Air Quality Index:</b> <a href="https://docs.airnowapi.org/aq101">Learn More</a>&nbsp&nbsp<a href="https://aqs.epa.gov/aqsweb/airdata/download_files.html#AQI">Download the raw AQI data from the EPA here</a></p>
+    <p> The EPA developed the AQI, which reports levels of ozone, particle pollution, and other common air
+        pollutants on the same scale.  An AQI reading of 101 corresponds to a level that is above the national air
+        quality standard—the higher the AQI rating, the greater the health impact.</p>
+</div>
+<div class="backgroundCaption">
+<p>Note: The Air Quality Index (AQI) data in this visualization is grouped by Core Based Statistical Area (CBSA) and is a monthly average of daily summary data from the EPA.</p>
+    <p><b>CBSA as defined by the US Census Bureau:</b> <a href="https://www.census.gov/programs-surveys/metro-micro/about.html">Learn More</a></p>
+    <p>The 2010 standards provide that each CBSA must contain at least one urban area of 10,000 or more population.
+        The general concept of a metropolitan or micropolitan statistical area is that of a core area containing a substantial population nucleus, together with adjacent communities having a high degree of economic and social integration with that core.
+        As of March 2020, there are 384 metropolitan statistical areas and 543 micropolitan statistical areas in the United States.</p>
+</div>
+<div id="tooltip"></div>
+<div id="rightTooltip"></div>
+
+<script>
+    // dimension of the page
+    const window_dims =
+        {
+            width: window.innerWidth,
+            height: window.innerHeight
+        };
+    const margin = window_dims.width * .2
+
+    // DATA SOURCES:
+    // US Census Shapefiles: https://www.census.gov/cgi-bin/geo/shapefiles/index.php
+    // US EPA AirQuality Pre-generated data files: https://aqs.epa.gov/aqsweb/airdata/download_files.html#AQI
+
+    // Source 1: US Census CBSA(Core-Based Statistical Areas) - Metropolitan/Micropolitan - shapefile converted to topojson and simplified using https://mapshaper.org/
+    let topojsonCBSA = "./data/us_cbsa_simple_topo.json";
+
+    //source 2: US Census State shapefile converted to topojson and simplified using https://mapshaper.org
+    let topojsonState = "./data/us_state_simple_topo.json";
+
+    //source 3: 2019AQI with months
+    let avgAQI2019 = "./data/monthlyAQI2019.csv";
+
+    //source 4: 2020AQI with months
+    let avgAQI2020 = "./data/monthlyAQI2020.csv";
+
+
+	// raw source files for lazy edits, comment out the above section to use these
+	// *** please don't delete this comment block! ***
+	/*
+    let topojsonCBSA = "https://raw.githubusercontent.com/NateRice/DSC530project/main/data/us_cbsa_simple_topo.json";
+    let topojsonState = "https://raw.githubusercontent.com/NateRice/DSC530project/main/data/us_state_simple_topo.json";
+	let avgAQI2019 = "https://raw.githubusercontent.com/NateRice/DSC530project/main/data/monthlyAQI2019.csv";
+	let avgAQI2020 = "https://raw.githubusercontent.com/NateRice/DSC530project/main/data/monthlyAQI2020.csv";
+	*/
+
+
+    // use a map projection then scale and translate to the center of the screen
+    let projection = d3.geoAlbersUsa().scale(1000).translate([365,225])
+    // use the map projection
+    let geoPath = d3.geoPath().projection(projection);  
+
+    // default values on page load
+    let selectedMonth = "Jan";
+	let selectedCBSA = "31080";
+	let selectedName = "Los Angeles-Long Beach-Anaheim, CA";
+
+	// dictionaries we kept adding in as we went along
+    let monthNames = { // for titles
+        "Jan":"January",
+        "Feb":"February",
+        "Mar":"March",
+        "Apr":"April",
+        "May":"May",
+        "Jun":"June",
+        "Jul":"July",
+        "Aug":"August",
+        "Sep":"September",
+        "Oct":"October",
+        "Nov":"November",
+        "Dec":"December"
+    };
+    let monthNum = { // for matching button names to dataset
+        "Jan": "01",
+        "Feb": "02",
+        "Mar": "03",
+        "Apr": "04",
+        "May": "05",
+        "Jun": "06",
+        "Jul": "07",
+        "Aug": "08",
+        "Sep": "09",
+        "Oct": "10",
+        "Nov": "11",
+        "Dec": "12"
+    };
+	let numMonth = { // for scatterplot xaxis labels
+		1:"Jan",
+		2:"Feb",
+		3:"Mar",
+		4:"Apr",
+		5:"May",
+		6:"Jun",
+		7:"Jul",
+		8:"Aug",
+		9:"Sep",
+		10:"Oct",
+		11:"Nov",
+		12:"Dec"
+    };
+	
+    let aqiColors = ["#00e400","#ffff00","#ff7e00","#ff0000","#8f3f97","#7e0023"]; //EPA AQI official color categories
+    let grays = ['#D8D8D8','#B4B4B4','#909090','#6C6C6C','#484848','#242424']; //grayscale
+    let colormap = aqiColors; // color scale in use
+
+	let aqiGraph = ["#00A2E8","#ED1C24"]; // distinct colors for scatterplot
+	let grayGraph = ["#ACACAC","#555555"]; // grayscale
+	let colorplot = aqiGraph; // color scale in use
+
+    // use a promise function to load all data files and then perform actions defined by following functions
+    Promise.all([
+            d3.json(topojsonCBSA),  // data[0] is CBSA json data
+            d3.json(topojsonState), // data[1] is State json data
+            d3.csv(avgAQI2019),     // data[2] is 2019 AQI data
+            d3.csv(avgAQI2020)      // data[3] is 2020 AQI data
+		]).then(function (data) {
+		let map2019 = choroplethMap(data,data[2],'#selectableAQIMap',"translate(0,0)")
+        let map2020 = choroplethMap(data,data[3],'#selectableAQIMap',"translate(750,0)")
+        let legend = legendAQI('#selectableAQIMap',"translate(630,285)") // bottom right 1210,245
+		let scatterplot = scatter(data);
+		
+//------------------BUTTON CONTROL----------------------------------------------------------------------------------//
+        // function to update month after button click
+        function updateMonth() {
+			let mname = monthNames[selectedMonth];
+            d3.selectAll("#selectableAQIMap > *").remove();
+            d3.select(".infobox .dataMonth").html("*** Select a month name to filter the data. *** Current Month: "+mname+"</p>");
+            d3.select("#selectable2019").html("<h2>US AVG. AQI for " + mname + " 2019</h2>");
+            d3.select("#selectable2020").html("<h2>US AVG. AQI for " + mname + " 2020</h2>");
+            map2019 = choroplethMap(data,data[2],'#selectableAQIMap',"translate(0,0)")
+            map2020 = choroplethMap(data,data[3],'#selectableAQIMap',"translate(750,0)")
+            legend = legendAQI('#selectableAQIMap',"translate(630,285)")
+        }
+
+        // function to update scatterplot after map region click
+        function updateScatter() {
+            d3.selectAll("#scatterplot > *").remove();
+            scatterplot = scatter(data);
+        }
+
+		// month buttons
+        let interface1 = d3.selectAll("#buttons");
+        interface1.selectAll('buttons')
+            .data(Object.keys(monthNum))
+            .enter()
+            .append("button")
+            .attr("class","button_month")
+            .text(d=>monthNames[d])
+            .on("click",(m,d)=>{
+                selectedMonth = d;
+                updateMonth()
+				})
+
+		// color buttons
+        const colorsDict = {"AQI Standard Colors":aqiColors,"Grayscale":grays}
+		const colorsGraph = {"AQI Standard Colors":aqiGraph,"Grayscale":grayGraph}
+        let interface2 = d3.selectAll("#options");
+        interface2.selectAll('options')
+            .data(Object.keys(colorsDict))
+            .enter()
+            .append("button")
+            .attr("class","button_color")
+            .text(d=>d)
+            .on("click",(m,d)=>{
+                //console.log('m=',m,'d=',d)
+                colormap = colorsDict[d]
+				colorplot = colorsGraph[d]
+                updateMonth()
+				updateScatter()
+            })
+
+    // function to create legend, pass in div id where legend will take place
+    // modified code from https://www.d3-graph-gallery.com/graph/custom_legend.html
+    function legendAQI(divID,translate){
+        colormap2 = colormap // needed to update to add the white no data
+        colormap2.push("#FFFFFF") // add white
+        let mapLegend = d3.select(divID).append("g")
+            .attr("transform", translate)
+        let keys = ["Good 0-50","Moderate 51-100","Unhealthy for Sensitive Groups 101-150","Unhealthy 151-200",
+            "Very Unhealthy 201-300","Hazardous 301-500","No Data/Not Urban"]
+        let color = d3.scaleOrdinal()
+            .domain(keys)
+            .range(colormap2);
+        let size = 15
+        mapLegend.selectAll("mydots")
+            .data(keys)
+            .enter()
+            .append("rect")
+            .attr("x", 0)
+            .attr("y", function(d,i){return 10 + i*(size+5)}) // 100 is where the first dot appears. 25 is the distance between dots
+            .attr("width", size)
+            .attr("height", size)
+            .style("fill", function(d){return color(d)})
+            .attr("stroke", "black")
+        mapLegend.selectAll("myLabels")
+            .data(keys)
+            .enter()
+            .append("text")
+            .attr("class","caption")
+            .attr("x", 5 +size)
+            .attr("y", function(d,i){return 15 + i*(size+5) + (size/2)})
+            .style("fill", "black")
+            .text(function(d){return d})
+            .attr("text-anchor", "left")
+            .style("alignment-baseline", "middle")
+            .style("font-size","14px")
+
+    }
+
+    //---------------------Draw the Choropleth Map-----------------------------------------------------------------------------------
+    // function to draw a Choropleth Map of AQI data
+    function choroplethMap(data,aqiDataFile,divID,translate) {
+
+        // convert topojson to geojson features using topojson.feature()
+        let geojsonCBSA = topojson.feature(data[0],data[0].objects.us_cbsa_simple_topo).features;
+
+        // convert State topojson to geojson features using topojson.feature()
+        let geojsonSTATE = topojson.feature(data[1],data[1].objects.cb_2020_us_state_500k).features;
+
+        // append a group for state lines
+        let mapAQI_STATE = d3.select(divID).append("g")
+            .attr("transform", translate);
+
+        // select all path elements for state lines, draw state borders
+        mapAQI_STATE.selectAll('path')
+            // load our map data
+            .data(geojsonSTATE)
+            .enter()
+            .append('path')
+            // use a class for styling
+            .attr("class", "path_geo_state")
+            // draw the map
+            .attr("d", geoPath)
+
+        // filter the data by month
+        let monthData = aqiDataFile.filter(function (d) {
+            return d.month === monthNum[selectedMonth]
+        })
+
+        // group the Air Quality Data in groups of CBSA
+        let aqi_cbsa_group = d3.group(monthData, function (d) {
+            return d["CBSA Code"];
+        })
+
+        // official EPA color scale https://docs.airnowapi.org/aq101
+        let aqiColorCode = [d3.range(0, 51), d3.range(51, 101), d3.range(101, 151), d3.range(151, 201), d3.range(201, 301), d3.range(301, 500)];
+        let aqiColor = d3.scaleThreshold()
+            .domain([51, 101, 151, 201, 301])
+            .range(colormap)
+
+
+        // Select the div/svg and append group, then append a path for the boundaries
+        let mapAQI_CBSA = d3.select(divID).append("g")
+            .attr("transform", translate);
+
+        // select all path elements draw CBSA
+        mapAQI_CBSA.selectAll('path')
+            // load our map data
+            .data(geojsonCBSA)
+            .enter()
+            .append('path')
+            // use a class for styling
+            .attr("class", "path_geo")
+            // draw the map
+            .attr("d", geoPath)
+            // tooltip
+            .on("mousemove", function (mouseData, d) {
+                try {
+                    if (mouseData.clientX >= 1200){
+                        d3.select('#rightTooltip')
+                        .style("opacity", .6)
+                        .style("left", (mouseData.clientX + window.pageXOffset - 120).toString() + "px")
+                        .style("top", (mouseData.clientY + window.pageYOffset).toString() + "px")
+                        .html(
+                            "<div class='tooltipData'>CBSA: " + aqi_cbsa_group.get(d.properties.GEOID)[0].CBSA + "</div>" +
+                            "<div class='tooltipData'>Avg AQI: " + Math.round(aqi_cbsa_group.get(d.properties.GEOID)[0].AQI) + "</div>")
+                    }
+                    else{d3.select('#tooltip')
+                    .style("opacity", .6)
+                    .style("left", (15+mouseData.clientX + window.pageXOffset).toString() + "px")
+                    .style("top", (mouseData.clientY + window.pageYOffset).toString() + "px")
+/*                    .style("left", (mouseData.clientX + window.pageXOffset).toString() + "px")
+                    .style("top", (mouseData.clientY + window.pageYOffset).toString() + "px")*/
+                    .html(
+                          "<div class='tooltipData'>CBSA: " + aqi_cbsa_group.get(d.properties.GEOID)[0].CBSA + "</div>" +
+                          "<div class='tooltipData'>Avg AQI: " + Math.round(aqi_cbsa_group.get(d.properties.GEOID)[0].AQI) + "</div>")
+                    }}
+                    catch (error) {
+                        if (mouseData.clientX >= 1200) {
+                            d3.select('#rightTooltip')
+                                .style("opacity", .6)
+                                .style("left", (mouseData.clientX + window.pageXOffset-120).toString() + "px")
+                                .style("top", (mouseData.clientY + window.pageYOffset).toString() + "px")
+                                .html(
+                                    "<div class='tooltipData'>CBSA: " + d.properties.GEOID + "  " + d.properties.NAMELSAD + "  " + " NO DATA" + "</div>")
+                        } else {
+                            d3.select('#tooltip')
+                                .style("opacity", .6)
+                                .style("left", (mouseData.clientX + window.pageXOffset).toString() + "px")
+                                .style("top", (mouseData.clientY + window.pageYOffset).toString() + "px")
+                                .html(
+                                    "<div class='tooltipData'>CBSA: " + d.properties.GEOID + "  " + d.properties.NAMELSAD + "  " + " NO DATA" + "</div>")
+
+                        }
+                    }
+            })
+            .on("mouseout", function () {
+            d3.selectAll('#tooltip')
+                .style("opacity", 0)
+            d3.selectAll('#rightTooltip')
+                .style("opacity", 0)
+            })
+			.on("click", function(data,d) {
+				selectedCBSA = d.properties.GEOID;
+				try {
+					selectedName = aqi_cbsa_group.get(d.properties.GEOID)[0].CBSA;
+				}
+				catch (error) {
+					selectedName = d.properties.NAMELSAD;
+				}
+				updateScatter();
+			})
+
+            // fill with color
+            .style("fill", function (d) {
+                try {
+                    return aqiColor(parseInt(aqi_cbsa_group.get(d.properties.GEOID)[0].AQI));
+                    }
+                catch (error) {
+                    //console.log(error);
+                    return "white"
+                }
+            })
+        }
+    }) // end of Promise.then(function (data) {
+
+		// Scatterplot!
+		// modified code from https://www.d3-graph-gallery.com/graph/connectedscatter_legend.html
+		function scatter(data){
+            let dataFull = [{name:"2019",values:data[2]},{name:"2020",values:data[3]}];
+		    d3.select("#scatterhead").html("<h2>AVG. AQI for "+selectedName+" (CBSA: "+selectedCBSA+")</h2>");
+		    // filter the data by CBSA Code
+    	    // console.log(selectedCBSA)
+            let ymax = 0;
+            for (var i=0; i<dataFull.length; i++) {
+                dataFull[i].values = dataFull[i].values.filter(function (d) {
+                    return d["CBSA Code"] === selectedCBSA
+                })
+                ymax = Math.max(ymax,d3.max(dataFull[i].values, function(d) { return +d.AQI; }))
+            }
+
+            const margin = {top:20 , bottom: 25 , left: 50 ,right: 50};
+            const height = 500 - margin.top - margin.bottom;
+            const width = 1200 - margin.left - margin.right;
+
+            // append the svg object to the body of the page
+            let svg = d3.select("#scatterplot")
+                .append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform",`translate(${margin.left},${margin.top})`);
+
+            // colors
+            const color = d3.scaleOrdinal()
+                .domain([0,dataFull.length-1])
+                .range(colorplot);
+
+            // create x axis scale
+            const x = d3.scaleLinear().domain([1,12]).range([0,width]);
+            // create y axis scale
+            const y = d3.scaleLinear().domain([0,ymax*1.05]).range([height,0]);
+
+            // create grid lines
+            const xAxisGrid = d3.axisBottom(x).tickSize(-height).tickFormat('');
+            const yAxisGrid = d3.axisLeft(y).tickSize(-width).tickFormat('');
+            // render grid axes
+            svg.append('g')
+                .attr("class", "x axis-grid")
+                .attr("transform", `translate(0, ${height})`)
+                .call(xAxisGrid);
+            svg.append('g')
+                .attr("class", "y axis-grid")
+                .call(yAxisGrid)
+
+            // add x-axis
+            svg.append("g")
+                .attr("class","axes")
+                .attr("transform", `translate(0, ${height})`)
+                .call(d3.axisBottom(x).tickFormat(function (d) {
+                    return numMonth[d];
+                }));
+
+            // Add y-axis
+            svg.append("g")
+                .attr("class","axes")
+                .call(d3.axisLeft(y));
+            svg.append("g")
+                .attr("class","axes")
+                .call(d3.axisRight(y))
+                .attr("transform", `translate(${width}, 0)`);
+            // draw lines
+            const line = d3.line()
+                .x(d => x(+d.month))
+                .y(d => y(+d.AQI))
+            svg.selectAll("dataLines")
+                .data(dataFull)
+                .join("path")
+                .attr("class", d => "AQI"+d.name)
+                .attr("d", d => line(d.values))
+                .attr("stroke", d => color(d.name))
+                .style("stroke-width", 3)
+                .style("fill", "none")
+
+            // draw points
+            svg
+                // First we need to enter in a group
+                .selectAll("dataPoints")
+                .data(dataFull)
+                .join('g')
+                .style("fill", d => color(d.name))
+                .attr("class", d => "AQI"+d.name)
+                // Second we need to enter in the 'values' part of this group
+                .selectAll("dataPoints")
+                .data(d => d.values)
+                .join("circle")
+                .attr("cx", d => x(d.month))
+                .attr("cy", d => y(d.AQI))
+                .attr("r", 5)
+                .attr("stroke", "white")
+
+            // Add a legend (interactive)
+			svg
+			  .selectAll("dataLegend")
+			  .data(dataFull)
+			  .join('g')
+				.append("text")
+                .attr("class", "legendtext")
+                .attr('x', (d,j) => 5+ j*120)
+                .attr('y', 20)
+                .text(d => "AQI in "+d.name)
+                .style("fill", d => color(d.name))
+                .style("font-weight","bold")
+                .on("click", function(event,d){
+                    // is the element currently visible ?
+                    currentOpacity = d3.selectAll(".AQI" + d.name).style("opacity") // fails if class name starts with a number (hence "AQI"+ in this section)
+                    // Change the opacity: from 0 to 1 or from 1 to 0
+                    d3.selectAll(".AQI" + d.name).transition().style("opacity", currentOpacity == 1 ? 0:1)
+                })
+        }
+</script>
+</body>
+</html>
