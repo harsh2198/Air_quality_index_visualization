@@ -5,8 +5,8 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>US Air Quality Index by Urban Area; The Pandemic's Impact on Air Quality in US Cities</title>
-    <script src="d3.js"></script>
-    <script src="topojson.js"></script>
+    <script src="./d3.js"></script>
+    <script src="./topojson.js"></script>
     <style>
 		.caption
         {
@@ -125,7 +125,7 @@
     </style>
 </head>
 <body>
-<h1 class="caption">US Air Quality Index by Urban Area (CBSA); The Pandemic's Impact on Air Quality in US Cities</h1>
+<h1 class="caption">US Air Quality Index by Urban Area; The Pandemic's Impact on Air Quality in US Cities</h1>
 <p class="caption">In <b>March 2020</b>, the president declares a nationwide emergency and the country begins to shut
     down to prevent the spread of COVID-19. Air Quality Index levels across the country are down as less people are
     traveling.</p>
@@ -179,27 +179,16 @@
     // US EPA AirQuality Pre-generated data files: https://aqs.epa.gov/aqsweb/airdata/download_files.html#AQI
 
     // Source 1: US Census CBSA(Core-Based Statistical Areas) - Metropolitan/Micropolitan - shapefile converted to topojson and simplified using https://mapshaper.org/
-    let topojsonCBSA = "./data/us_cbsa_simple_topo.json";
+    let topojsonCBSA = "https://raw.githubusercontent.com/harsh2198/Air_quality_index_visualization/main/Data/us_cbsa_simple_topo.json";
 
     //source 2: US Census State shapefile converted to topojson and simplified using https://mapshaper.org
-    let topojsonState = "./data/us_state_simple_topo.json";
+    let topojsonState = "https://raw.githubusercontent.com/harsh2198/Air_quality_index_visualization/main/Data/us_state_simple_topo.json";
 
     //source 3: 2019AQI with months
-    let avgAQI2019 = "./data/monthlyAQI2019.csv";
+    let avgAQI2019 = "https://raw.githubusercontent.com/harsh2198/Air_quality_index_visualization/main/Data/monthlyAQI2019.csv";
 
     //source 4: 2020AQI with months
-    let avgAQI2020 = "./data/monthlyAQI2020.csv";
-
-
-	// raw source files for lazy edits, comment out the above section to use these
-	// *** please don't delete this comment block! ***
-	/*
-    let topojsonCBSA = "https://raw.githubusercontent.com/NateRice/DSC530project/main/data/us_cbsa_simple_topo.json";
-    let topojsonState = "https://raw.githubusercontent.com/NateRice/DSC530project/main/data/us_state_simple_topo.json";
-	let avgAQI2019 = "https://raw.githubusercontent.com/NateRice/DSC530project/main/data/monthlyAQI2019.csv";
-	let avgAQI2020 = "https://raw.githubusercontent.com/NateRice/DSC530project/main/data/monthlyAQI2020.csv";
-	*/
-
+    let avgAQI2020 = "https://raw.githubusercontent.com/harsh2198/Air_quality_index_visualization/main/Data/monthlyAQI2020.csv";
 
     // use a map projection then scale and translate to the center of the screen
     let projection = d3.geoAlbersUsa().scale(1000).translate([365,225])
@@ -326,7 +315,6 @@
             })
 
     // function to create legend, pass in div id where legend will take place
-    // modified code from https://www.d3-graph-gallery.com/graph/custom_legend.html
     function legendAQI(divID,translate){
         colormap2 = colormap // needed to update to add the white no data
         colormap2.push("#FFFFFF") // add white
@@ -435,8 +423,6 @@
                     .style("opacity", .6)
                     .style("left", (15+mouseData.clientX + window.pageXOffset).toString() + "px")
                     .style("top", (mouseData.clientY + window.pageYOffset).toString() + "px")
-/*                    .style("left", (mouseData.clientX + window.pageXOffset).toString() + "px")
-                    .style("top", (mouseData.clientY + window.pageYOffset).toString() + "px")*/
                     .html(
                           "<div class='tooltipData'>CBSA: " + aqi_cbsa_group.get(d.properties.GEOID)[0].CBSA + "</div>" +
                           "<div class='tooltipData'>Avg AQI: " + Math.round(aqi_cbsa_group.get(d.properties.GEOID)[0].AQI) + "</div>")
@@ -490,13 +476,10 @@
         }
     }) // end of Promise.then(function (data) {
 
-		// Scatterplot!
-		// modified code from https://www.d3-graph-gallery.com/graph/connectedscatter_legend.html
+		// Scatterplot
 		function scatter(data){
             let dataFull = [{name:"2019",values:data[2]},{name:"2020",values:data[3]}];
 		    d3.select("#scatterhead").html("<h2>AVG. AQI for "+selectedName+" (CBSA: "+selectedCBSA+")</h2>");
-		    // filter the data by CBSA Code
-    	    // console.log(selectedCBSA)
             let ymax = 0;
             for (var i=0; i<dataFull.length; i++) {
                 dataFull[i].values = dataFull[i].values.filter(function (d) {
